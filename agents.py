@@ -224,8 +224,6 @@ class LLMCritic:
         first_line = text.strip().splitlines()[0].lower()
         approved = ("approved" in first_line) and ("rejected" not in first_line)
 
-        # approved = text.lower().startswith("approved")
-
         if approved:
             feedback = "Approved"
             status = "approved"
