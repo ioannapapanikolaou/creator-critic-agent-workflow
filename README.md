@@ -123,18 +123,7 @@ The script prints:
     * Heuristic Critic ensures strict, reproducible enforcement
 - Attempt budget prevents infinite loops and makes failure states explicit.
 
-## Transparency on LLM Prompts
-- LLMCreator prompt:
-    * Generate one caption
-    * ≤ 15 words
-    * Include product name verbatim
-    * Include at least one emoji
-    * Avoid blocked safety terms
-    * Energetic, concise tone
-    * Prior critic feedback is injected to guide retries
-- LLMCritic prompt:
-    * Strictly validates product mention, word count, emoji presence, and safety terms
-    * Responds with APPROVED or REJECTED: <concise feedback>
+
 
 ## Repository Structure
 - `agents.py`: Creator and Critic implementations, including LLM-backed variants
