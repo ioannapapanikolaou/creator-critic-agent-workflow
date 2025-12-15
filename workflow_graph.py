@@ -19,7 +19,7 @@ class GraphState(TypedDict):
     approved: bool
     attempts: List[Attempt]
     metadata: Dict[str, str]
-    exhausted: bool  # NEW: attempt budget exhausted
+    exhausted: bool  
 
 
 def _creator_node(creator: Any):
