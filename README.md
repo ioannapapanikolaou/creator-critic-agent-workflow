@@ -123,7 +123,7 @@ The script prints:
     * Heuristic Critic ensures strict, reproducible enforcement
 - Attempt budget prevents infinite loops and makes failure states explicit.
 
-## Transparency on LLM Prompts
+## LLM Prompts
 - LLMCreator prompt:
     * Generate one caption
     * ≤ 15 words

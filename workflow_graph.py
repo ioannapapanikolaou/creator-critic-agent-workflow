@@ -7,9 +7,11 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, TypedDict, Union
 
 from langgraph.graph import END, StateGraph
+from pydantic import BaseModel, Field
 
 from agents import Attempt, Creator, Critic, LLMCreator, LLMCritic
 
+from langchain_ollama import ChatOllama
 
 class GraphState(TypedDict):
     product: str
@@ -19,7 +21,20 @@ class GraphState(TypedDict):
     approved: bool
     attempts: List[Attempt]
     metadata: Dict[str, str]
-    exhausted: bool  # NEW: attempt budget exhausted
+    exhausted: bool  
+
+# used for pydantic validation on initial and final state 
+class GraphStateModel(BaseModel):
+    product: str
+    audience: str
+    caption: str = ""
+    feedback: Optional[str] = None
+    approved: bool = False
+    attempts: List[Attempt] = Field(default_factory=list)
+    metadata: Dict[str, str] = Field(default_factory=dict)
+    exhausted: bool = False
+
+    model_config = {"arbitrary_types_allowed": True}
 
 
 def _creator_node(creator: Any):
@@ -156,7 +171,13 @@ def run_workflow(
         "exhausted": False,
     }
 
+    # Validate initial state shape
+    GraphStateModel.model_validate(initial_state)
+
     final_state = app.invoke(initial_state)
+
+    # Validate final state shape
+    GraphStateModel.model_validate(final_state)
     return final_state
 
 
@@ -185,6 +206,4 @@ def _build_llm(
         )
 
     # Default to Ollama local
-    from langchain_ollama import ChatOllama
-
     return ChatOllama(model=model, temperature=temperature, base_url=base_url)

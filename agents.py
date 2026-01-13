@@ -172,7 +172,7 @@ class LLMCreator:
 class LLMCritic:
     """Critic backed by an injected LangChain chat model (Ollama by default).
 
-    Prompt intent (transparency): strict check to ensure the caption mentions the
+    Prompt intent: strict check to ensure the caption mentions the
     product, is <=15 words, includes an emoji, and avoids blocked terms. Responds with
     either APPROVED or REJECTED plus concise violated-rule feedback.
     """
@@ -185,9 +185,11 @@ class LLMCritic:
         temperature: float = 0.0,
         base_url: str = "http://localhost:11434",
         llm=None,
+        blocklist: Optional[set] = None,
     ) -> None:
         self.product = product
         self.max_words = max_words
+        self.blocklist = blocklist or {"kill", "violence", "hate"}
         if llm is not None:
             self.llm = llm
         else:
@@ -219,12 +221,13 @@ class LLMCritic:
             ),
         ]
         result = self.llm.invoke(messages)
-        text = str(getattr(result, "content", result)).strip()
         
-        first_line = text.strip().splitlines()[0].lower()
+         # extract the text content from the result
+        text = str(getattr(result, "content", result)).strip()     
+        
+        # takes the first line of the response, lowercased (used to classify approval vs rejection)
+        first_line = text.strip().splitlines()[0].lower()           
         approved = ("approved" in first_line) and ("rejected" not in first_line)
-
-        # approved = text.lower().startswith("approved")
 
         if approved:
             feedback = "Approved"
@@ -235,6 +238,16 @@ class LLMCritic:
             status = "rejected"
             brand_safety = "failed"
 
+        # Deterministic post-checks 
+        hard_failures = self._hard_rules(caption)
+        if hard_failures:
+            approved = False
+            status = "rejected"
+            brand_safety = "failed"
+            if feedback == "Approved":
+                feedback = " ".join(hard_failures)
+            else:
+                feedback = (feedback + " " + " ".join(hard_failures)).strip()
 
         word_count = len(caption.split())
         metadata = {
@@ -244,4 +257,19 @@ class LLMCritic:
             "brand_safety_check": brand_safety,
         }
         return Evaluation(approved=approved, feedback=feedback, metadata=metadata)
+
+    def _hard_rules(self, caption: str) -> List[str]:
+        failures: List[str] = []
+        word_count = len(caption.split())
+
+        if not contains_emoji(caption):
+            failures.append("Must contain an emoji.")
+        if word_count > self.max_words:
+            failures.append(f"Too long ({word_count} words). Keep under {self.max_words}.")
+        if self.product.lower() not in caption.lower():
+            failures.append("Please mention the product by name.")
+        if any(term in caption.lower() for term in self.blocklist):
+            failures.append("Contains blocked terms; rewrite for brand safety.")
+
+        return failures
 

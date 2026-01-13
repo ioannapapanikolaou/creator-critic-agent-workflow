@@ -8,6 +8,8 @@ import argparse
 import json
 from typing import List, Dict, Any
 
+from pydantic import BaseModel, Field
+
 from adcp_payload import build_adcp_payload
 from agents import Attempt
 from workflow_graph import run_workflow
@@ -32,6 +34,47 @@ def _attempts_as_adcp(attempts: List[Attempt]) -> Dict[str, Any]:
         "task": "creative_generation_log",
         "attempts": entries,
     }
+
+# pydantic models used to validate and describe the JSON output 
+
+# after generating attempts and final caption, build the attempt log and final payload dicts 
+class AttemptEntryModel(BaseModel):
+    sequence: int
+    type: str
+    content: str
+    status: str
+    feedback: str
+
+
+class AttemptLogModel(BaseModel):
+    adcp_version: str
+    task: str
+    attempts: List[AttemptEntryModel]
+
+
+class CreativeAssetModel(BaseModel):
+    type: str
+    content: str
+
+
+class PayloadModel(BaseModel):
+    target_audience: str
+    creative_assets: List[CreativeAssetModel]
+    product: str
+
+
+class MetadataModel(BaseModel):
+    length: int
+    word_count: int
+    sentiment: str
+    brand_safety_check: str
+
+
+class FinalAdcpModel(BaseModel):
+    adcp_version: str
+    task: str
+    payload: PayloadModel
+    metadata: MetadataModel
 
 
 def main() -> None:
@@ -114,6 +157,7 @@ def main() -> None:
     metadata = final_state.get("metadata", {})
 
     attempts_log = _attempts_as_adcp(attempts)
+    AttemptLogModel.model_validate(attempts_log)
 
     print("\nAttempt Log (AdCP-style):")
     print(json.dumps(attempts_log, indent=2))
@@ -124,6 +168,8 @@ def main() -> None:
         caption=caption,
         meta=metadata,
     )
+
+    FinalAdcpModel.model_validate(final_payload)
 
     print("\nFinal AdCP JSON:")
     print(json.dumps(final_payload, indent=2))
