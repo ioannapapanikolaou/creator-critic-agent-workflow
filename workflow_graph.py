@@ -37,6 +37,7 @@ class GraphStateModel(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
+# creator proposes caption
 def _creator_node(creator: Any):
     def node(state: GraphState) -> GraphState:
         # If we already exhausted attempts, don't generate anything new.
@@ -48,7 +49,7 @@ def _creator_node(creator: Any):
 
     return node
 
-
+# critic evaluates, appends Attempt, sets feedback/approved/exhausted
 def _critic_node(critic: Any, max_attempts: int):
     def node(state: GraphState) -> GraphState:
         # If we already exhausted attempts, just pass through.
@@ -56,8 +57,8 @@ def _critic_node(critic: Any, max_attempts: int):
             return state
 
         evaluation = critic.evaluate(state["caption"])
+        # Record this attempt (caption + evaluation) in the history for tracking and exhaustion checks
         attempts = state["attempts"] + [Attempt(caption=state["caption"], evaluation=evaluation)]
-
         exhausted = (len(attempts) >= max_attempts) and (not evaluation.approved)
 
         # If exhausted, keep last evaluation + mark exhausted, but DO NOT raise.
@@ -85,7 +86,7 @@ def _critic_node(critic: Any, max_attempts: int):
 
     return node
 
-
+# sends to END if approved or exhausted, else back to creator 
 def _route(state: GraphState) -> str:
     if state.get("exhausted"):
         return "done"

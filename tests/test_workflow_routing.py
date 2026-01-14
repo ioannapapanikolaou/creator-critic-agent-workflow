@@ -3,6 +3,7 @@ import pytest
 from agents import Evaluation
 from workflow_graph import build_graph, _critic_node
 
+# deterministic creator and critics to be able to assert routing behaviour without LLMs
 
 class SequenceCreator:
     def __init__(self, captions):
@@ -64,7 +65,7 @@ def test_routing_retries_until_approved():
     assert "ok" in final_state["caption"]
 
 
-def test_attempt_budget_exhaustion_raises():
+def test_attempt_budget_exhaustion_marks_exhausted():
     critic = AlwaysRejectCritic()
     node = _critic_node(critic, max_attempts=0)
     state = {

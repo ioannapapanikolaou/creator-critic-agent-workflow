@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import warnings
 from typing import List, Dict, Any
 
 from pydantic import BaseModel, Field
+
+warnings.filterwarnings("ignore", message=".*Pydantic V1.*", category=UserWarning)
 
 from adcp_payload import build_adcp_payload
 from agents import Attempt
@@ -36,8 +39,6 @@ def _attempts_as_adcp(attempts: List[Attempt]) -> Dict[str, Any]:
     }
 
 # pydantic models used to validate and describe the JSON output 
-
-# after generating attempts and final caption, build the attempt log and final payload dicts 
 class AttemptEntryModel(BaseModel):
     sequence: int
     type: str
@@ -45,7 +46,7 @@ class AttemptEntryModel(BaseModel):
     status: str
     feedback: str
 
-
+# after generating attempts and final caption, build the attempt log and final payload dicts 
 class AttemptLogModel(BaseModel):
     adcp_version: str
     task: str
@@ -148,6 +149,16 @@ def main() -> None:
         api_key=args.api_key,
         openai_base_url=args.openai_base_url,
     )
+
+    # # see intermediate messages 
+    # print("\nRaw intermediate attempts:")
+    # for attempt in final_state["attempts"]:
+    #     print(
+    #         f"caption='{attempt.caption}', "
+    #         f"approved={attempt.evaluation.approved}, "
+    #         f"feedback='{attempt.evaluation.feedback}'"
+    #     )
+
     if not final_state.get("approved", False):
         print("\nNo approved caption produced.")
         print("Reason:", final_state.get("feedback", "Unknown"))
